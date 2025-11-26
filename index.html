@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AP Exam Center – Study Smarter</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css ">
     <style>
         :root {
             --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6; --accent: #06b6d4;
-            --success: #10b981; --error: #ef4444; --dark: #1e293b; --light: #f8fafc; --gray: #64748b;
-            --border: #e2e8f0; --shadow: 0 4px 6px -1px rgba(0,0,0,.1); --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.25);
+            --success: #10b981; --error: #ef4444; --dark: #1e293b; --light: #f8fafc;
+            --gray: #64748b; --border: #e2e8f0; --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.25);
         }
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
         body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:var(--dark);line-height:1.6;}
@@ -60,7 +61,7 @@
         .form-group label{display:block;margin-bottom:.5rem;font-weight:500;}
         .form-group input,.form-group textarea,.form-group select{width:100%;padding:.75rem;border:2px solid var(--border);border-radius:.5rem;font-family:inherit;font-size:1rem;}
         .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--primary);}
-        /* ---- notifications ---- */
+        /* ---- notifications ---- -->
         .notification{background:#fff;border-radius:.5rem;padding:1rem;margin:1rem 0;box-shadow:var(--shadow);display:none;align-items:center;gap:.5rem;}
         .notification.show{display:flex;}
         .notification.success{border-left:4px solid var(--success);}
@@ -106,7 +107,7 @@
         </div>
     </div>
 
-    <!--------- COURSE DETAIL (NOTES / LINKS / AI) --------->
+    <!--------- COURSE DETAIL --------->
     <div id="course-detail" class="page-section">
         <div class="course-detail">
             <div class="page-header">
@@ -215,22 +216,22 @@
 
 <!-- ========================  JAVASCRIPT  ======================== -->
 <script>
-/* ----------  STATE  ---------- */
+/* ========  STATE  ======== */
 let appData = {
   courses: [
     {id: 1, title: "AP Calculus AB", icon: "📊", description: "Master limits, derivatives, and integrals",
      notes: `# 📊 AP Calculus AB\n\n## Unit 1: Limits and Continuity\n<details><summary>Click to expand</summary>\n- Limits graphically/numerically\n- Limit laws\n- Continuity & discontinuities\n</details>\n\n## Unit 2: Derivatives\n<details><summary>Click to expand</summary>\n- Definition of derivative\n- Basic rules / chain rule\n- Applications: motion, optimization\n</details>`,
-     links: [{title: "College Board AB", url: "https://apstudents.collegeboard.org/courses/ap-calculus-ab"}]},
+     links: [{title: "College Board AB", url: "https://apstudents.collegeboard.org/courses/ap-calculus-ab "}]},
     {id: 2, title: "AP Biology", icon: "🧬", description: "Explore the science of life",
      notes: `# 🧬 AP Biology\n\n## Unit 1: Biochemistry\n<details><summary>Click to expand</summary>\n- Properties of water\n- Macromolecules\n- Enzyme function\n</details>`,
-     links: [{title: "College Board Bio", url: "https://apstudents.collegeboard.org/courses/ap-biology"}]}
+     links: [{title: "College Board Bio", url: "https://apstudents.collegeboard.org/courses/ap-biology "}]}
   ],
   users: [], communityNotes: [],
   analytics: {totalUsers: 0, guestUsers: 0, registeredUsers: 0, sessions: [], pageViews: {}}
 };
 let currentUser = null, isDeveloperMode = false, currentCourseId = null, isSignUp = false;
 
-/* ----------  LIFE-CYCLE  ---------- */
+/* ========  LIFE-CYCLE  ======== */
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   renderCourses();
@@ -240,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCommunityNotes();
 });
 
-/* ----------  DATA  ---------- */
+/* ========  DATA  ======== */
 function loadData() {
   const d = localStorage.getItem('apExamAppData'), u = localStorage.getItem('currentUser');
   if (d) appData = JSON.parse(d);
@@ -249,7 +250,7 @@ function loadData() {
 function saveData() { localStorage.setItem('apExamAppData', JSON.stringify(appData)); }
 function saveCurrentUser() { localStorage.setItem('currentUser', JSON.stringify(currentUser)); }
 
-/* ----------  UI HELPERS  ---------- */
+/* ========  UI HELPERS  ======== */
 function showNotification(msg, type = 'info') {
   const box = document.getElementById('notification'), txt = document.getElementById('notification-text');
   txt.textContent = msg; box.className = `notification ${type} show`;
@@ -261,7 +262,7 @@ function showPage(name) {
   trackEvent('page_view', {page: name});
 }
 
-/* ----------  COURSES  ---------- */
+/* ========  COURSES  ======== */
 function renderCourses() {
   const grid = document.getElementById('course-grid');
   grid.innerHTML = '';
@@ -290,7 +291,7 @@ function showCourseDetail(id) {
       <a href="${l.url}" target="_blank">${l.title}</a>
       <button class="btn btn-outline" onclick="deleteLink(${id}, '${l.url}')" style="padding:.25rem .5rem"><i class="fas fa-trash"></i></button>
     </div>`).join('');
-  renderAIChat(id);
+  renderAIChat(id);   //  ←─🔥 ALWAYS render AI chat when entering detail
   showPage('course-detail');
 }
 function renderMarkdown(t) {
@@ -298,7 +299,7 @@ function renderMarkdown(t) {
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
 }
 
-/* ----------  AUTH  ---------- */
+/* ========  AUTH  ======== */
 function toggleAuth() {
   if (currentUser) { trackEvent('user_signout', {userId: currentUser.id}); currentUser = null; saveCurrentUser(); updateAuthButton(); showNotification('Signed out', 'success'); }
   else showPage('auth');
@@ -333,7 +334,7 @@ function updateAuthButton() {
   else { btn.textContent = 'Sign In'; info.classList.add('hidden'); }
 }
 
-/* ----------  COMMUNITY  ---------- */
+/* ========  COMMUNITY  ======== */
 function populateCourseSelect() {
   const s = document.getElementById('upload-course');
   if (!s || !appData.courses.length) { s.innerHTML = '<option value="">No courses</option>'; return; }
@@ -372,7 +373,7 @@ function viewNotePage(id) {
   showPage('note-view-page');
 }
 
-/* ----------  DEV-MODE GATE  ---------- */
+/* ========  DEV-MODE GATE  ======== */
 function toggleDevMode() {
   if (document.getElementById('dev-password').value !== '6767') { showNotification('Wrong password', 'error'); return; }
   isDeveloperMode = !isDeveloperMode;
@@ -395,7 +396,7 @@ function updateDevDashboard() {
     : '<p>No registered users</p>';
 }
 
-/* ----------  AI CHAT  ---------- */
+/* ========  AI CHAT  ======== */
 function renderAIChat(courseId) {
   const box = document.getElementById('ai-chat-container');
   if (!currentUser) { box.innerHTML = '<div class="chat-restricted"><i class="fas fa-lock"></i><h4>AI Chat Restricted</h4><p>Please <a href="#" onclick="showPage(\'auth\'); return false;">sign in</a> to access the AI study assistant.</p></div>'; return; }
@@ -426,7 +427,7 @@ function generateAIResponse(msg) {
   return replies[Math.floor(Math.random() * replies.length)];
 }
 
-/* ----------  ANALYTICS  ---------- */
+/* ========  ANALYTICS  ======== */
 function initAnalytics() {
   trackEvent('page_view', {page: 'home'});
   let start = Date.now();
@@ -439,8 +440,8 @@ function trackEvent(ev, p = {}) {
   saveData();
 }
 
-/* ----------  MISC  ---------- */
-function deleteCourse(e, id) { e.stopPropagation(); showNotification('Course deleted', 'success'); appData.courses = appData.courses.filter(c => c.id !== id); saveData(); renderCourses(); populateCourseSelect(); }
+/* ========  MISC  ======== */
+function deleteCourse(e, id) { e.stopPropagation(); if (confirm('Delete course?')) { appData.courses = appData.courses.filter(c => c.id !== id); saveData(); renderCourses(); populateCourseSelect(); showNotification('Deleted', 'success'); } }
 function deleteLink(cid, url) { const c = appData.courses.find(x => x.id === cid); if (c) { c.links = c.links.filter(l => l.url !== url); saveData(); showCourseDetail(cid); } }
 function addLink() { const t = prompt('Link title'), u = prompt('URL'); if (t && u) { const c = appData.courses.find(x => x.id === currentCourseId); if (c) { c.links.push({title: t, url: u}); saveData(); showCourseDetail(currentCourseId); } } }
 function toggleEditNotes() { const content = document.getElementById('course-notes'), editor = document.getElementById('notes-editor'), btn = document.querySelector('button[onclick="toggleEditNotes()"] span'), saveBtn = document.querySelector('button[onclick="saveNotes()"]').parentElement; if (editor.style.display === 'none') { content.style.display = 'none'; editor.style.display = 'block'; btn.textContent = 'Cancel Edit'; saveBtn.classList.remove('hidden'); } else { content.style.display = 'block'; editor.style.display = 'none'; btn.textContent = 'Edit Notes'; saveBtn.classList.add('hidden'); } }
