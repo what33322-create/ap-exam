@@ -1,212 +1,1681 @@
-<script>
-/* ========  STATE  ======== */
-let appData = {
-  courses: [ {id:1, title:"AP Calculus AB", icon:"📊", description:"Master limits, derivatives, and integrals",
-              notes:"# AP Calculus AB\n\n<details><summary>Unit 1 …</summary>…</details>",
-              links:[{title:"College Board",url:"https://apstudents.collegeboard.org/courses/ap-calculus-ab"}]}, 
-            {id:2, title:"AP Biology",      icon:"🧬", description:"Explore the science of life",
-              notes:"# AP Biology\n\n<details><summary>Unit 1 …</summary>…</details>",
-              links:[{title:"College Board",url:"https://apstudents.collegeboard.org/courses/ap-biology"}]} ],
-  users:[], communityNotes:[],  analytics:{totalUsers:0,guestUsers:0,registeredUsers:0,sessions:[],pageViews:{}}
-};
-let currentUser = null, isDeveloperMode = false, currentCourseId = null, isSignUp = false;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AP Exam Help Center - Study Smarter</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --error: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.25);
+        }
 
-/* ========  LIFE-CYCLE  ======== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  loadData();
-  renderCourses();
-  updateAuthButton();
-  initAnalytics();
-  populateCourseSelect();
-  renderCommunityNotes();
-});
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* ========  DATA  ======== */
-function loadData(){
-  const d=localStorage.getItem('apExamAppData'), u=localStorage.getItem('currentUser');
-  if(d){appData=JSON.parse(d);}
-  if(u){currentUser=JSON.parse(u);}
-}
-function saveData(){localStorage.setItem('apExamAppData',JSON.stringify(appData));}
-function saveCurrentUser(){localStorage.setItem('currentUser',JSON.stringify(currentUser));}
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
 
-/* ========  UI HELPERS  ======== */
-function showNotification(msg,type='info'){
-  const box=document.getElementById('notification'), txt=document.getElementById('notification-text');
-  txt.textContent=msg; box.className=`notification ${type} show`;
-  setTimeout(()=>box.classList.remove('show'),3000);
-}
-function showPage(name){
-  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
-  document.getElementById(name+'-page').classList.add('active');
-  trackEvent('page_view',{page:name});
-}
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
 
-/* ========  COURSES  ======== */
-function renderCourses(){
-  const grid=document.getElementById('course-grid');
-  grid.innerHTML='';
-  appData.courses.forEach(c=>{
-    const card=document.createElement('div');
-    card.className='course-card fade-in';
-    card.innerHTML=`
-      <button class="delete-btn" onclick="deleteCourse(event,${c.id})"><i class="fas fa-times"></i></button>
-      <span class="course-icon">${c.icon}</span>
-      <h3 class="course-title">${c.title}</h3>
-      <p class="course-description">${c.description}</p>`;
-    card.addEventListener('click',e=>{
-      if(!e.target.closest('.delete-btn')){showCourseDetail(c.id);}
-    });
-    grid.appendChild(card);
-  });
-}
-function showCourseDetail(id){
-  currentCourseId=id;
-  const c=appData.courses.find(x=>x.id===id);
-  document.getElementById('course-detail-title').innerHTML=`${c.icon} ${c.title}`;
-  document.getElementById('course-notes').innerHTML=renderMarkdown(c.notes);
-  document.getElementById('notes-editor').value=c.notes;
-  document.getElementById('course-links').innerHTML=c.links.map(l=>`
-    <div class="link-card">
-      <a href="${l.url}" target="_blank">${l.title}</a>
-      <button class="btn btn-outline" onclick="deleteLink(${id},'${l.url}')" style="padding:.25rem .5rem"><i class="fas fa-trash"></i></button>
-    </div>`).join('');
-  renderAIChat(id);
-  showPage('course-detail');
-}
-function renderMarkdown(t){
-  return t.replace(/^### (.*)/gm,'<h3>$1</h3>')
-          .replace(/^## (.*)/gm,'<h2>$1</h2>')
-          .replace(/^# (.*)/gm,'<h1>$1</h1>')
-          .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-          .replace(/\n/g,'<br>');
-}
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-/* ========  AUTH  ======== */
-function toggleAuth(){
-  if(currentUser){ trackEvent('user_signout',{userId:currentUser.id}); currentUser=null; saveCurrentUser(); updateAuthButton(); showNotification('Signed out','success');}
-  else{showPage('auth');}
-}
-function toggleAuthMode(){
-  isSignUp=!isSignUp;
-  document.getElementById('auth-title').textContent=isSignUp?'Sign Up':'Sign In';
-  document.getElementById('auth-submit').textContent=isSignUp?'Sign Up':'Sign In';
-  document.getElementById('name-group').style.display=isSignUp?'block':'none';
-  document.getElementById('auth-toggle').textContent=isSignUp?'Already have an account? Sign in':'Don\'t have an account? Sign up';
-}
-function handleAuth(e){
-  e.preventDefault();
-  const email=document.getElementById('auth-email').value.trim(),
-        pwd=document.getElementById('auth-password').value.trim(),
-        name=document.getElementById('auth-name').value.trim();
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
 
-  if(!email||!pwd){showNotification('Fill required fields','error'); return;}
-  if(isSignUp&&!name){showNotification('Enter name','error'); return;}
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+        }
 
-  if(isSignUp){
-    if(appData.users.find(u=>u.email===email)){showNotification('User exists','error'); return;}
-    const nu={id:Date.now(), email, password:pwd, name, createdAt:new Date().toISOString()};
-    appData.users.push(nu); currentUser=nu; appData.analytics.registeredUsers++;
-    trackEvent('user_signup',{userId:nu.id});
-    showNotification('Account created','success');
-  }else{
-    const u=appData.users.find(x=>x.email===email&&x.password===pwd);
-    if(!u){showNotification('Invalid credentials','error'); return;}
-    currentUser=u; trackEvent('user_signin',{userId:u.id});
-    showNotification('Welcome back','success');
-  }
-  saveData(); saveCurrentUser(); updateAuthButton(); showPage('home');
-}
-function updateAuthButton(){
-  const btn=document.getElementById('auth-text'), info=document.getElementById('user-info'), name=document.getElementById('user-name');
-  if(currentUser){btn.textContent='Sign Out'; info.classList.remove('hidden'); name.textContent=currentUser.name;}
-  else{btn.textContent='Sign In'; info.classList.add('hidden');}
-}
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
 
-/* ========  COMMUNITY  ======== */
-function populateCourseSelect(){
-  const s=document.getElementById('upload-course');
-  if(!s||!appData.courses.length){s.innerHTML='<option value="">No courses</option>'; return;}
-  s.innerHTML=appData.courses.map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
-}
-function uploadNote(){
-  if(!currentUser){showNotification('Please sign in','error'); showPage('auth'); return;}
-  const cid=parseInt(document.getElementById('upload-course').value),
-        ttl=document.getElementById('upload-title').value.trim(),
-        cnt=document.getElementById('upload-content').value.trim();
-  if(!ttl||!cnt){showNotification('Fill all fields','error'); return;}
-  const note={id:Date.now(), courseId:cid, title:ttl, content:cnt,
-              author:currentUser.name, authorId:currentUser.id,
-              createdAt:new Date().toISOString(), downloads:0};
-  appData.communityNotes.push(note); saveData(); renderCommunityNotes();
-  document.getElementById('upload-title').value='';
-  document.getElementById('upload-content').value='';
-  trackEvent('note_uploaded',{noteId:note.id, userId:currentUser.id});
-  showNotification('Notes shared','success');
-}
-function renderCommunityNotes(){
-  const box=document.getElementById('community-notes'),
-        notes=appData.communityNotes.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  if(!box)return;
-  if(!notes.length){box.innerHTML='<p>No community notes yet. Be the first!</p>'; return;}
-  box.innerHTML=notes.map(n=>{
-    const c=appData.courses.find(x=>x.id===n.courseId);
-    return `<div class="note-item">
-      <div class="note-meta">
-        <span><strong>${n.title}</strong> – ${c?c.title:'Unknown'}</span>
-        <span>by ${n.author} • ${new Date(n.createdAt).toLocaleDateString()}</span>
-      </div>
-      <button class="btn btn-primary" onclick="viewNote(${n.id})"><i class="fas fa-eye"></i> View</button>
-    </div>`;
-  }).join('');
-}
-function viewNote(id){
-  const n=appData.communityNotes.find(x=>x.id===id);
-  if(n){const c=appData.courses.find(x=>x.id===n.courseId); alert(`${n.title}\nCourse: ${c?c.title:'Unknown'}\nAuthor: ${n.author}\n\n${n.content}`);}
-}
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
 
-/* ========  DEV-MODE GATE  ======== */
-function toggleDevMode(){
-  if(document.getElementById('dev-password').value!=='6767'){showNotification('Wrong password','error'); return;}
-  isDeveloperMode=!isDeveloperMode;
-  document.body.classList.toggle('developer-mode');
-  document.getElementById('dev-controls').classList.toggle('hidden');
-  document.getElementById('dev-stats').classList.toggle('hidden');
-  if(isDeveloperMode) updateDevDashboard();
-  showNotification(isDeveloperMode?'Dev on':'Dev off','success');
-  trackEvent('dev_mode_toggle',{enabled:isDeveloperMode});
-}
-function updateDevDashboard(){
-  document.getElementById('total-users').textContent=appData.users.length;
-  document.getElementById('guest-users').textContent=appData.analytics.guestUsers;
-  document.getElementById('total-notes').textContent=appData.communityNotes.length;
-  const sessions=appData.analytics.sessions;
-  if(sessions.length){
-    const avg=sessions.reduce((a,s)=>a+(s.duration||0),0)/sessions.length;
-    document.getElementById('avg-session').textContent=Math.round(avg)+'m';
-  }
-  const box=document.getElementById('users-container');
-  box.innerHTML=appData.users.length
-    ? appData.users.map(u=>`<div class="user-item"><div><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div><div class="user-time">${new Date(u.createdAt).toLocaleDateString()}</div></div>`).join('')
-    :'<p>No registered users</p>';
-}
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-/* ========  ANALYTICS  ======== */
-function initAnalytics(){
-  trackEvent('page_view',{page:'home'});
-  let start=Date.now();
-  window.addEventListener('beforeunload',()=>trackEvent('session_end',{duration:Math.round((Date.now()-start)/60000)}));
-}
-function trackEvent(ev,p={}){
-  appData.analytics.sessions.push({ev, timestamp:new Date().toISOString(), userType:currentUser?'registered':'guest', userId:currentUser?currentUser.id:null, ...p});
-  if(!currentUser&&ev!=='page_view') appData.analytics.guestUsers++;
-  if(appData.analytics.sessions.length>1000) appData.analytics.sessions=appData.analytics.sessions.slice(-1000);
-  saveData();
-}
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
 
-/* ========  MISC UTILS  ======== */
-function deleteCourse(e,id){e.stopPropagation(); if(confirm('Delete course?')){appData.courses=appData.courses.filter(c=>c.id!==id); saveData(); renderCourses(); populateCourseSelect(); showNotification('Deleted','success');}}
-function deleteLink(cid,url){const c=appData.courses.find(x=>x.id===cid); if(c){c.links=c.links.filter(l=>l.url!==url); saveData(); showCourseDetail(cid);}}
-function addLink(){const t=prompt('Title'),u=prompt('URL'); if(t&&u){const c=appData.courses.find(x=>x.id===currentCourseId); if(c){c.links.push({title:t,url:u}); saveData(); showCourseDetail(currentCourseId);}}}
-function showAddCourseForm(){const t=prompt('Course title'); if(t){const i=prompt('Icon (emoji)')||'📚',d=prompt('Description')||''; appData.courses.push({id:Date.now(),title:t,icon:i,description:d,notes:`# ${t}\nAdd notes…`,links:[]}); saveData(); renderCourses(); populateCourseSelect(); showNotification('Added','success');}}
-</script>
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Page Sections */
+        .page-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        /* Course Grid */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .course-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .course-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .course-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+
+        .course-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .course-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .course-description {
+            color: var(--gray);
+            line-height: 1.6;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--error);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .developer-mode .delete-btn {
+            display: flex;
+        }
+
+        /* Course Detail Page */
+        .course-detail {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Notes Section */
+        .notes-container {
+            background: var(--light);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            min-height: 300px;
+        }
+
+        .notes-editor {
+            width: 100%;
+            min-height: 300px;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            display: none;
+        }
+
+        .notes-content {
+            line-height: 1.8;
+        }
+
+        .notes-content h1, .notes-content h2, .notes-content h3 {
+            margin: 1.5rem 0 1rem;
+            color: var(--dark);
+        }
+
+        .notes-content ul, .notes-content ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .notes-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Dropdown for Units */
+        .unit-dropdown {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .unit-header {
+            padding: 1rem;
+            background: var(--light);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .unit-header:hover {
+            background: #f1f5f9;
+        }
+
+        .unit-content {
+            padding: 1rem;
+            display: none;
+            background: white;
+        }
+
+        .unit-dropdown.active .unit-content {
+            display: block;
+        }
+
+        .unit-dropdown.active .unit-header i {
+            transform: rotate(180deg);
+        }
+
+        /* Links Section */
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .link-card {
+            background: var(--light);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--primary);
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .link-card:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow);
+        }
+
+        .link-card a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* AI Chat */
+        .ai-chat {
+            background: var(--light);
+            border-radius: 0.5rem;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            word-wrap: break-word;
+            min-width: 100px;
+            transition: all 0.3s ease;
+        }
+
+        .user-message {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .ai-message {
+            background: white;
+            color: var(--dark);
+            align-self: flex-start;
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 2rem;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--primary);
+        }
+
+        .chat-input button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* In-page Notifications */
+        .notification {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            box-shadow: var(--shadow);
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification.show {
+            display: flex;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--error);
+        }
+
+        .notification.info {
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Auth Section */
+        .auth-section {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Developer Panel */
+        .dev-panel {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .dev-login {
+            background: var(--light);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--light);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* User List */
+        .user-list {
+            background: var(--light);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border-radius: 0.25rem;
+            border-left: 4px solid var(--success);
+        }
+
+        .user-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .user-email {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .user-time {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        /* Community Section */
+        .community-section {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .upload-form {
+            background: var(--light);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .notes-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .note-item {
+            background: var(--light);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--success);
+        }
+
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .course-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo" onclick="showPage('home'); return false;">
+                    <i class="fas fa-graduation-cap"></i> AP Exam Center
+                </a>
+                <div class="user-info hidden" id="user-info">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="user-name"></span>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn btn-outline" onclick="showPage('community')">
+                        <i class="fas fa-users"></i> Community
+                    </button>
+                    <button class="btn btn-outline" onclick="showPage('dev')">
+                        <i class="fas fa-code"></i> Dev
+                    </button>
+                    <button class="btn btn-primary" onclick="toggleAuth()">
+                        <i class="fas fa-user"></i> <span id="auth-text">Sign In</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Area -->
+    <div class="container">
+        <div id="notification" class="notification">
+            <i class="fas fa-info-circle"></i>
+            <span id="notification-text"></span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Home Page -->
+        <div id="home-page" class="page-section active">
+            <section class="hero">
+                <h1>Master Your AP Exams</h1>
+                <p>Comprehensive study resources, AI assistance, and community-driven content</p>
+            </section>
+
+            <div class="course-grid" id="course-grid">
+                <!-- Courses will be dynamically loaded -->
+            </div>
+            
+            <div id="dev-controls" class="hidden">
+                <button class="btn btn-primary" onclick="showAddCourseForm()">
+                    <i class="fas fa-plus"></i> Add New Course
+                </button>
+            </div>
+        </div>
+
+        <!-- Course Detail Page -->
+        <div id="course-detail" class="page-section">
+            <div class="course-detail">
+                <div class="page-header">
+                    <h2 id="course-detail-title"></h2>
+                    <button class="btn btn-outline" onclick="showPage('home')">
+                        <i class="fas fa-arrow-left"></i> Back to Courses
+                    </button>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-book"></i> Notes
+                    </h3>
+                    <div class="notes-container">
+                        <div class="notes-content" id="course-notes">
+                            <!-- Notes will be loaded here -->
+                        </div>
+                        <textarea class="notes-editor" id="notes-editor"></textarea>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="toggleEditNotes()">
+                                <i class="fas fa-edit"></i> <span>Edit Notes</span>
+                            </button>
+                            <button class="btn btn-success hidden" onclick="saveNotes()">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-link"></i> Practice Resources
+                    </h3>
+                    <div class="links-grid" id="course-links">
+                        <!-- Links will be loaded here -->
+                    </div>
+                    <button class="btn btn-primary" onclick="addLink()" style="margin-top: 1rem;">
+                        <i class="fas fa-plus"></i> Add Link
+                    </button>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <i class="fas fa-robot"></i> AI Study Assistant
+                    </h3>
+                    <div id="ai-chat-container">
+                        <!-- AI chat will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Community Section -->
+        <div id="community-page" class="page-section">
+            <div class="community-section">
+                <div class="page-header">
+                    <h2><i class="fas fa-users"></i> Community Notes</h2>
+                    <button class="btn btn-outline" onclick="showPage('home')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+
+                <div class="upload-form">
+                    <h3>Share Your Notes</h3>
+                    <div class="form-group">
+                        <label>Course</label>
+                        <select id="upload-course" class="form-group input">
+                            <!-- Courses will be populated here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="upload-title" placeholder="Enter note title">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes Content</label>
+                        <textarea id="upload-content" rows="6" placeholder="Paste your notes here..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="uploadNote()">
+                        <i class="fas fa-upload"></i> Share Notes
+                    </button>
+                </div>
+
+                <div class="notes-list" id="community-notes">
+                    <!-- Community notes will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Developer Section -->
+        <div id="dev-page" class="page-section">
+            <div class="dev-panel">
+                <div class="page-header">
+                    <h2><i class="fas fa-chart-bar"></i> Developer Dashboard</h2>
+                    <button class="btn btn-outline" onclick="showPage('home')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+
+                <div class="dev-login">
+                    <h3>Developer Access</h3>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="dev-password" placeholder="Enter developer password">
+                    </div>
+                    <button class="btn btn-primary" onclick="toggleDevMode()">
+                        <i class="fas fa-unlock"></i> Enable Developer Mode
+                    </button>
+                </div>
+
+                <div id="dev-stats" class="hidden">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-users">0</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="guest-users">0</div>
+                            <div class="stat-label">Guest Users</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-notes">0</div>
+                            <div class="stat-label">Community Notes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avg-session">0m</div>
+                            <div class="stat-label">Avg Session Time</div>
+                        </div>
+                    </div>
+
+                    <div class="user-list" id="user-list">
+                        <h3>Registered Users</h3>
+                        <div id="users-container">
+                            <!-- Users will be listed here -->
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>User Activity</h3>
+                        <div id="activity-log" style="background: var(--light); padding: 1rem; border-radius: 0.5rem; max-height: 300px; overflow-y: auto;">
+                            <!-- Activity log will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth Section -->
+        <div id="auth-page" class="page-section">
+            <div class="auth-section">
+                <div class="page-header">
+                    <h2 id="auth-title">Sign In</h2>
+                    <button class="btn btn-outline" onclick="showPage('home')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+                <form id="auth-form" onsubmit="handleAuth(event)">
+                    <div class="form-group" id="name-group" style="display: none;">
+                        <label>Name</label>
+                        <input type="text" id="auth-name" placeholder="Enter your name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="auth-email" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="auth-password" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <span id="auth-submit">Sign In</span>
+                    </button>
+                    <p style="text-align: center; margin-top: 1rem;">
+                        <a href="#" onclick="toggleAuthMode(); return false;" id="auth-toggle">Don't have an account? Sign up</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // DEBUG: Add console logging to track execution
+        console.log('=== AP EXAM CENTER - DEBUG MODE ===');
+        
+        // App State
+        let appData = {
+            courses: [
+                {
+                    id: 1,
+                    title: "AP Calculus AB",
+                    icon: "📊",
+                    description: "Master limits, derivatives, and integrals",
+                    notes: `# 📊 AP Calculus AB
+
+## 📚 Unit 1: Limits and Continuity
+<details class="unit-dropdown">
+<summary class="unit-header">Unit 1 Topics <i class="fas fa-chevron-down"></i></summary>
+<div class="unit-content">
+- Understanding limits graphically and numerically
+- Limit laws and algebraic manipulation
+- Continuity and types of discontinuities
+- Infinite limits and limits at infinity
+</div>
+</details>
+
+## 📚 Unit 2: Derivatives
+<details class="unit-dropdown">
+<summary class="unit-header">Unit 2 Topics <i class="fas fa-chevron-down"></i></summary>
+<div class="unit-content">
+- Definition of derivative as a limit
+- Basic differentiation rules
+- Chain rule and implicit differentiation
+- Applications: motion, optimization, related rates
+</div>
+</details>
+
+## 📚 Unit 3: Integrals
+<details class="unit-dropdown">
+<summary class="unit-header">Unit 3 Topics <i class="fas fa-chevron-down"></i></summary>
+<div class="unit-content">
+- Riemann sums and definite integrals
+- Fundamental Theorem of Calculus
+- Basic antiderivatives
+- Area between curves
+</div>
+</details>`,
+                    links: [
+                        { title: "College Board AP Calculus AB", url: "https://apstudents.collegeboard.org/courses/ap-calculus-ab" },
+                        { title: "Khan Academy Calculus", url: "https://www.khanacademy.org/math/ap-calculus-ab" },
+                        { title: "Paul's Online Math Notes", url: "https://tutorial.math.lamar.edu/Classes/CalcI/CalcI.aspx" }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: "AP Biology",
+                    icon: "🧬",
+                    description: "Explore the science of life",
+                    notes: `# 🧬 AP Biology
+
+## 📚 Unit 1: Biochemistry
+<details class="unit-dropdown">
+<summary class="unit-header">Unit 1 Topics <i class="fas fa-chevron-down"></i></summary>
+<div class="unit-content">
+- Properties of water
+- Macromolecules: carbohydrates, lipids, proteins, nucleic acids
+- Enzyme structure and function
+</div>
+</details>
+
+## 📚 Unit 2: Cell Structure and Function
+<details class="unit-dropdown">
+<summary class="unit-header">Unit 2 Topics <i class="fas fa-chevron-down"></i></summary>
+<div class="unit-content">
+- Prokaryotic vs eukaryotic cells
+- Organelle functions
+- Cell membrane transport
+</div>
+</details>`,
+                    links: [
+                        { title: "College Board AP Biology", url: "https://apstudents.collegeboard.org/courses/ap-biology" },
+                        { title: "Khan Academy Biology", url: "https://www.khanacademy.org/science/ap-biology" }
+                    ]
+                }
+            ],
+            users: [],
+            communityNotes: [],
+            analytics: {
+                totalUsers: 0,
+                guestUsers: 0,
+                registeredUsers: 0,
+                sessions: [],
+                pageViews: {}
+            }
+        };
+
+        let currentUser = null;
+        let isDeveloperMode = false;
+        let currentCourseId = null;
+        let isSignUp = false;
+
+        // Initialize with debug logging
+        console.log('Starting initialization...');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, starting setup...');
+            loadData();
+            renderCourses();
+            updateAuthButton();
+            initAnalytics();
+            // FIX 1: Ensure courses are loaded before populating dropdown
+            populateCourseSelect();
+            renderCommunityNotes();
+            initializeDropdowns();
+            console.log('Initialization complete');
+        });
+
+        // Data Management with debug
+        function loadData() {
+            console.log('Loading data...');
+            const saved = localStorage.getItem('apExamAppData');
+            if (saved) {
+                appData = JSON.parse(saved);
+                console.log('Loaded appData:', appData);
+            } else {
+                console.log('No saved data found, using defaults');
+                // Initialize with default data if none exists
+                saveData();
+            }
+            const user = localStorage.getItem('currentUser');
+            if (user) {
+                currentUser = JSON.parse(user);
+                console.log('Loaded currentUser:', currentUser);
+            } else {
+                console.log('No current user found');
+            }
+        }
+
+        function saveData() {
+            console.log('Saving data...');
+            localStorage.setItem('apExamAppData', JSON.stringify(appData));
+        }
+
+        function saveCurrentUser() {
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notification-text');
+            
+            text.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Page Navigation with debug
+        function showPage(pageName) {
+            console.log('Showing page:', pageName);
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            const targetPage = document.getElementById(`${pageName}-page`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                console.log('Page shown successfully');
+            } else {
+                console.error('Page not found:', `${pageName}-page`);
+            }
+            
+            trackEvent('page_view', { page: pageName });
+        }
+
+        // Course Management with CRITICAL FIX for click handling
+        function renderCourses() {
+            console.log('Rendering courses...');
+            const grid = document.getElementById('course-grid');
+            if (!grid) {
+                console.error('Course grid not found!');
+                return;
+            }
+            
+            grid.innerHTML = '';
+            console.log('Number of courses to render:', appData.courses.length);
+            
+            appData.courses.forEach(course => {
+                console.log('Rendering course:', course.title);
+                const card = document.createElement('div');
+                card.className = 'course-card fade-in';
+                card.innerHTML = `
+                    <button class="delete-btn" onclick="deleteCourse(event, ${course.id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <span class="course-icon">${course.icon}</span>
+                    <h3 class="course-title">${course.title}</h3>
+                    <p class="course-description">${course.description}</p>
+                `;
+                
+                // FIX 2: Proper event delegation to prevent conflicts
+                card.addEventListener('click', function(e) {
+                    // Only navigate if clicking on card content, not delete button
+                    if (!e.target.closest('.delete-btn')) {
+                        console.log('Course clicked:', course.title);
+                        showCourseDetail(course.id);
+                    }
+                });
+                
+                grid.appendChild(card);
+            });
+            console.log('Courses rendered successfully');
+        }
+
+        function deleteCourse(event, courseId) {
+            event.stopPropagation(); // Prevent card click from firing
+            console.log('Deleting course:', courseId);
+            
+            if (confirm('Are you sure you want to delete this course?')) {
+                appData.courses = appData.courses.filter(course => course.id !== courseId);
+                saveData();
+                renderCourses();
+                showNotification('Course deleted successfully!', 'success');
+            }
+        }
+
+        function showCourseDetail(courseId) {
+            console.log('Showing course detail for ID:', courseId);
+            currentCourseId = courseId;
+            const course = appData.courses.find(c => c.id === courseId);
+            if (!course) {
+                console.error('Course not found:', courseId);
+                return;
+            }
+
+            console.log('Found course:', course.title);
+
+            // Update course detail page
+            const titleElement = document.getElementById('course-detail-title');
+            if (titleElement) {
+                titleElement.innerHTML = `${course.icon} ${course.title}`;
+            } else {
+                console.error('Title element not found');
+            }
+
+            const notesElement = document.getElementById('course-notes');
+            if (notesElement) {
+                notesElement.innerHTML = renderNotesWithDropdowns(course.notes);
+            } else {
+                console.error('Notes element not found');
+            }
+
+            const editorElement = document.getElementById('notes-editor');
+            if (editorElement) {
+                editorElement.value = course.notes;
+            } else {
+                console.error('Editor element not found');
+            }
+            
+            // Render links
+            const linksContainer = document.getElementById('course-links');
+            if (linksContainer) {
+                linksContainer.innerHTML = course.links.map(link => `
+                    <div class="link-card">
+                        <a href="${link.url}" target="_blank">${link.title}</a>
+                        <button class="btn btn-outline" onclick="deleteLink(${courseId}, '${link.url}')" style="padding: 0.25rem 0.5rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+                console.log('Links rendered:', course.links.length);
+            } else {
+                console.error('Links container not found');
+            }
+            
+            // Render AI chat
+            renderAIChat(courseId);
+            
+            // Show course detail page
+            showPage('course-detail');
+            console.log('Course detail shown successfully');
+        }
+
+        function renderNotesWithDropdowns(notes) {
+            return notes
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/^\* (.*$)/gim, '<li>$1</li>')
+                .replace(/\*\*(.*)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function renderAIChat(courseId) {
+            console.log('Rendering AI chat for course:', courseId);
+            const container = document.getElementById('ai-chat-container');
+            if (!container) {
+                console.error('AI chat container not found');
+                return;
+            }
+            
+            if (!currentUser) {
+                container.innerHTML = `
+                    <div class="chat-restricted">
+                        <i class="fas fa-lock"></i>
+                        <h4>AI Chat Restricted</h4>
+                        <p>Please <a href="#" onclick="showPage('auth'); return false;">sign in</a> to access the AI study assistant.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="ai-chat">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message ai-message">
+                            <i class="fas fa-robot"></i> Hello! I'm your AI study assistant for ${appData.courses.find(c => c.id === courseId).title}. How can I help you today?
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input" placeholder="Ask me anything about this course..." onkeypress="if(event.key==='Enter') sendAIMessage()">
+                        <button onclick="sendAIMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            console.log('AI chat rendered successfully');
+        }
+
+        function sendAIMessage() {
+            const input = document.getElementById('chat-input');
+            if (!input) {
+                console.error('Chat input not found');
+                return;
+            }
+            
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) {
+                console.error('Chat messages container not found');
+                return;
+            }
+            
+            // Add user message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'chat-message user-message';
+            userMsg.innerHTML = `<i class="fas fa-user"></i> ${message}`;
+            chatMessages.appendChild(userMsg);
+
+            // Simulate AI response
+            setTimeout(() => {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'chat-message ai-message';
+                aiMsg.innerHTML = `<i class="fas fa-robot"></i> ${generateAIResponse(message)}`;
+                chatMessages.appendChild(aiMsg);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1000);
+
+            input.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function generateAIResponse(message) {
+            const responses = [
+                "That's an excellent question! Let me help you understand this concept better.",
+                "I recommend reviewing the relevant unit in the notes section above.",
+                "For more practice, check out the resources I've shared in the links section.",
+                "This is a key concept for the AP exam. Would you like me to break it down step by step?"
+            ];
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
+        // Authentication - FIXED: Proper form handling with redirect
+        function toggleAuth() {
+            if (currentUser) {
+                console.log('Signing out user:', currentUser.name);
+                trackEvent('user_signout', { userId: currentUser.id });
+                currentUser = null;
+                saveCurrentUser();
+                updateAuthButton();
+                showNotification('Signed out successfully!', 'success');
+                return;
+            }
+            
+            console.log('Showing auth page');
+            showPage('auth');
+        }
+
+        function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            document.getElementById('auth-title').textContent = isSignUp ? 'Sign Up' : 'Sign In';
+            document.getElementById('auth-submit').textContent = isSignUp ? 'Sign Up' : 'Sign In';
+            document.getElementById('name-group').style.display = isSignUp ? 'block' : 'none';
+            document.getElementById('auth-toggle').textContent = isSignUp ? 'Already have an account? Sign in' : 'Don\'t have an account? Sign up';
+        }
+
+        // FIX 3: Complete auth function overhaul with proper redirect
+        function handleAuth(event) {
+            event.preventDefault(); // CRITICAL: Prevent form submission
+            console.log('Handling auth, isSignUp:', isSignUp);
+            
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const name = document.getElementById('auth-name').value.trim();
+
+            console.log('Auth form data:', { email, password: password ? '***' : '', name });
+
+            if (!email || !password) {
+                showNotification('Please fill in all required fields!', 'error');
+                return;
+            }
+
+            if (isSignUp) {
+                // Sign up
+                if (!name) {
+                    showNotification('Please enter your name!', 'error');
+                    return;
+                }
+                
+                const existingUser = appData.users.find(u => u.email === email);
+                if (existingUser) {
+                    showNotification('User already exists!', 'error');
+                    return;
+                }
+
+                const newUser = {
+                    id: Date.now(),
+                    email: email,
+                    password: password, // In production, hash this!
+                    name: name,
+                    createdAt: new Date().toISOString()
+                };
+
+                appData.users.push(newUser);
+                currentUser = newUser;
+                appData.analytics.registeredUsers++;
+                console.log('New user created:', newUser);
+                trackEvent('user_signup', { userId: newUser.id });
+                showNotification('Account created successfully!', 'success');
+            } else {
+                // Sign in
+                const user = appData.users.find(u => u.email === email && u.password === password);
+                if (!user) {
+                    showNotification('Invalid credentials!', 'error');
+                    return;
+                }
+                currentUser = user;
+                console.log('User signed in:', user);
+                trackEvent('user_signin', { userId: user.id });
+                showNotification('Signed in successfully!', 'success');
+            }
+
+            saveData();
+            saveCurrentUser();
+            updateAuthButton();
+            showPage('home');
+            console.log('Auth completed, returning to home');
+        }
+
+        function updateAuthButton() {
+            console.log('Updating auth button, currentUser:', currentUser);
+            const authText = document.getElementById('auth-text');
+            const userInfo = document.getElementById('user-info');
+            const userName = document.getElementById('user-name');
+            
+            if (currentUser) {
+                authText.textContent = 'Sign Out';
+                userInfo.classList.remove('hidden');
+                userName.textContent = currentUser.name;
+                console.log('Updated to show user name:', currentUser.name);
+            } else {
+                authText.textContent = 'Sign In';
+                userInfo.classList.add('hidden');
+                console.log('Updated to show sign in');
+            }
+        }
+
+        // Community Features - FIXED: Proper course dropdown synchronization
+        function populateCourseSelect() {
+            console.log('Populating course select');
+            const select = document.getElementById('upload-course');
+            if (!select) {
+                console.error('Upload course select not found');
+                return;
+            }
+            
+            // FIX 4: Ensure courses exist before populating
+            if (!appData.courses || appData.courses.length === 0) {
+                select.innerHTML = '<option value="">No courses available</option>';
+                return;
+            }
+            
+            select.innerHTML = appData.courses.map(course => 
+                `<option value="${course.id}">${course.title}</option>`
+            ).join('');
+            console.log('Course select populated with', appData.courses.length, 'courses');
+        }
+
+        function uploadNote() {
+            console.log('Uploading note');
+            if (!currentUser) {
+                showNotification('Please sign in to share notes!', 'error');
+                showPage('auth');
+                return;
+            }
+
+            const courseId = parseInt(document.getElementById('upload-course').value);
+            const title = document.getElementById('upload-title').value.trim();
+            const content = document.getElementById('upload-content').value.trim();
+
+            console.log('Note data:', { courseId, title, content: content.substring(0, 50) + '...' });
+
+            if (!title || !content) {
+                showNotification('Please fill in all fields!', 'error');
+                return;
+            }
+
+            const newNote = {
+                id: Date.now(),
+                courseId: courseId,
+                title: title,
+                content: content,
+                author: currentUser.name,
+                authorId: currentUser.id,
+                createdAt: new Date().toISOString(),
+                downloads: 0
+            };
+
+            appData.communityNotes.push(newNote);
+            saveData();
+            renderCommunityNotes();
+            
+            // Reset form
+            document.getElementById('upload-title').value = '';
+            document.getElementById('upload-content').value = '';
+            
+            trackEvent('note_uploaded', { noteId: newNote.id, userId: currentUser.id });
+            showNotification('Notes shared successfully!', 'success');
+            console.log('Note uploaded successfully');
+        }
+
+        function renderCommunityNotes() {
+            console.log('Rendering community notes');
+            const container = document.getElementById('community-notes');
+            if (!container) {
+                console.error('Community notes container not found');
+                return;
+            }
+            
+            const notes = appData.communityNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            if (notes.length === 0) {
+                container.innerHTML = '<p>No community notes yet. Be the first to share!</p>';
+                return;
+            }
+            
+            container.innerHTML = notes.map(note => {
+                const course = appData.courses.find(c => c.id === note.courseId);
+                return `
+                    <div class="note-item">
+                        <div class="note-meta">
+                            <span><strong>${note.title}</strong> - ${course ? course.title : 'Unknown Course'}</span>
+                            <span>by ${note.author} • ${new Date(note.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <button class="btn btn-primary" onclick="viewNote(${note.id})">
+                            <i class="fas fa-eye"></i> View Notes
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            console.log('Community notes rendered:', notes.length);
+        }
+
+        function viewNote(noteId) {
+            const note = appData.communityNotes.find(n => n.id === noteId);
+            if (note) {
+                const course = appData.courses.find(c => c.id === note.courseId);
+                const noteContent = `${note.title}\n\nCourse: ${course ? course.title : 'Unknown'}\nAuthor: ${note.author}\nDate: ${new Date(note.createdAt).toLocaleDateString()}\n\n${note.content}`;
+                alert(noteContent);
+            }
+        }
+
+        // Developer Mode with enhanced tracking
+        function toggleDevMode() {
+            console.log('Toggling dev mode');
+            const password = document.getElementById('dev-password').value;
+            if (password === '6767') {
+                isDeveloperMode = !isDeveloperMode;
+                document.body.classList.toggle('developer-mode');
+                document.getElementById('dev-controls').classList.toggle('hidden');
+                document.getElementById('dev-stats').classList.toggle('hidden');
+                
+                if (isDeveloperMode) {
+                    updateDevDashboard();
+                }
+                
+                showNotification(isDeveloperMode ? 'Developer mode enabled!' : 'Developer mode disabled!', 'success');
+                console.log('Dev mode toggled:', isDeveloperMode);
+                trackEvent('dev_mode_toggled', { enabled: isDeveloperMode });
+            } else {
+                showNotification('Incorrect password!', 'error');
+                console.log('Wrong dev password');
+            }
+        }
+
+        function updateDevDashboard() {
+            console.log('Updating dev dashboard');
+            document.getElementById('total-users').textContent = appData.users.length;
+            document.getElementById('guest-users').textContent = appData.analytics.guestUsers;
+            document.getElementById('total-notes').textContent = appData.communityNotes.length;
+            
+            // Calculate average session time
+            const sessions = appData.analytics.sessions;
+            if (sessions.length > 0) {
+                const avgTime = sessions.reduce((acc, session) => acc + (session.duration || 0), 0) / sessions.length;
+                document.getElementById('avg-session').textContent = `${Math.round(avgTime)}m`;
+            }
+            
+            // Update user list
+            const usersContainer = document.getElementById('users-container');
+            if (appData.users.length === 0) {
+                usersContainer.innerHTML = '<p>No registered users yet</p>';
+            } else {
+                usersContainer.innerHTML = appData.users.map(user => `
+                    <div class="user-item">
+                        <div class="user-info-item">
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-email">${user.email}</div>
+                        </div>
+                        <div class="user-time">${new Date(user.createdAt).toLocaleDateString()}</div>
+                    </div>
+                `).join('');
+            }
+            
+            // Update activity log
+            const activityLog = document.getElementById('activity-log');
+            const recentActivity = appData.analytics.sessions.slice(-10).reverse();
+            if (recentActivity.length === 0) {
+                activityLog.innerHTML = '<p>No recent activity</p>';
+            } else {
+                activityLog.innerHTML = recentActivity.map(session => `
+                    <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 0.25rem;">
+                        <strong>${session.userType}</strong> - ${session.event} 
+                        <span style="float: right; color: var(--gray);">${new Date(session.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                `).join('');
+            }
+            console.log('Dev dashboard updated');
+        }
+
+        // Analytics - Enhanced tracking
+        function initAnalytics() {
+            console.log('Initializing analytics');
+            trackEvent('page_view', { page: 'home' });
+            
+            // Track session duration
+            let sessionStart = Date.now();
+            window.addEventListener('beforeunload', () => {
+                const duration = Math.round((Date.now() - sessionStart) / 60000);
+                trackEvent('session_end', { duration: duration });
+            });
+        }
+
+        function trackEvent(eventName, properties = {}) {
+            const session = {
+                event: eventName,
+                timestamp: new Date().toISOString(),
+                userType: currentUser ? 'registered' : 'guest',
+                userId: currentUser ? currentUser.id : null,
+                ...properties
+            };
+            
+            appData.analytics.sessions.push(session);
+            
+            if (!currentUser && eventName !== 'page_view') {
+                appData.analytics.guestUsers++;
+            }
+            
+            // Keep only last 1000 sessions
+            if (appData.analytics.sessions.length > 1000) {
+                appData.analytics.sessions = appData.analytics.sessions.slice(-1000);
+            }
+            
+            saveData();
+        }
+
+        // Initialize dropdowns
+        function initializeDropdowns() {
+            console.log('Initializing dropdowns');
+            // This will be called after content is loaded
+            setTimeout(() => {
+                document.querySelectorAll('.unit-dropdown').forEach(dropdown => {
+                    const header = dropdown.querySelector('.unit-header');
+                    if (header) {
+                        header.addEventListener('click', () => {
+                            dropdown.classList.toggle('active');
+                        });
+                    }
+                });
+            }, 100);
+        }
+
+        // Utility Functions
+        function generateId() {
+            return Date.now() + Math.random();
+        }
+
+        // Additional utility functions for course management
+        function showAddCourseForm() {
+            const title = prompt('Enter course title:');
+            if (!title) return;
+            
+            const icon = prompt('Enter course icon (emoji):') || '📚';
+            const description = prompt('Enter course description:') || 'New course';
+            
+            const newCourse = {
+                id: Date.now(),
+                title: title,
+                icon: icon,
+                description: description,
+                notes: `# ${title}\n\nAdd your notes here...`,
+                links: []
+            };
+            
+            appData.courses.push(newCourse);
+            saveData();
+            renderCourses();
+            populateCourseSelect(); // Update community dropdown
+            showNotification('Course added successfully!', 'success');
+            trackEvent('course_added', { courseId: newCourse.id });
+        }
+
+        function addLink() {
+            if (!currentCourseId) return;
+            
+            const title = prompt('Enter link title:');
+            if (!title) return;
+            
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            
+            const course = appData.courses.find(c => c.id === currentCourseId);
+            if (course) {
+                course.links.push({ title, url });
+                saveData();
+                showCourseDetail(currentCourseId); // Refresh the page
+                showNotification('Link added successfully!', 'success');
+                trackEvent('link_added', { courseId: currentCourseId });
+            }
+        }
+
+        function deleteLink(courseId, url) {
+            const course = appData.courses.find(c => c.id === courseId);
+            if (course) {
+                course.links = course.links.filter(link => link.url !== url);
+                saveData();
+                showCourseDetail(courseId); // Refresh the page
+                showNotification('Link deleted successfully!', 'success');
+            }
+        }
+
+        function toggleEditNotes() {
+            const notesContent = document.getElementById('course-notes');
+            const notesEditor = document.getElementById('notes-editor');
+            const editBtn = document.querySelector('button[onclick="toggleEditNotes()"] span');
+            const saveBtn = document.querySelector('button[onclick="saveNotes()"]').parentElement;
+            
+            if (notesEditor.style.display === 'none') {
+                notesContent.style.display = 'none';
+                notesEditor.style.display = 'block';
+                editBtn.textContent = 'Cancel Edit';
+                saveBtn.classList.remove('hidden');
+            } else {
+                notesContent.style.display = 'block';
+                notesEditor.style.display = 'none';
+                editBtn.textContent = 'Edit Notes';
+                saveBtn.classList.add('hidden');
+            }
+        }
+
+        function saveNotes() {
+            if (!currentCourseId) return;
+            
+            const notesEditor = document.getElementById('notes-editor');
+            const course = appData.courses.find(c => c.id === currentCourseId);
+            
+            if (course) {
+                course.notes = notesEditor.value;
+                saveData();
+                showCourseDetail(currentCourseId); // Refresh to show updated notes
+                showNotification('Notes saved successfully!', 'success');
+                trackEvent('notes_saved', { courseId: currentCourseId });
+            }
+        }
+    </script>
+</body>
+</html>
