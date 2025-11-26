@@ -215,7 +215,7 @@
 
 <!-- ========================  JAVASCRIPT  ======================== -->
 <script>
-/* ========  STATE  ======== */
+/* ----------  STATE  ---------- */
 let appData = {
   courses: [
     {id: 1, title: "AP Calculus AB", icon: "📊", description: "Master limits, derivatives, and integrals",
@@ -230,7 +230,7 @@ let appData = {
 };
 let currentUser = null, isDeveloperMode = false, currentCourseId = null, isSignUp = false;
 
-/* ========  LIFE-CYCLE  ======== */
+/* ----------  LIFE-CYCLE  ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   renderCourses();
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCommunityNotes();
 });
 
-/* ========  DATA  ======== */
+/* ----------  DATA  ---------- */
 function loadData() {
   const d = localStorage.getItem('apExamAppData'), u = localStorage.getItem('currentUser');
   if (d) appData = JSON.parse(d);
@@ -249,7 +249,7 @@ function loadData() {
 function saveData() { localStorage.setItem('apExamAppData', JSON.stringify(appData)); }
 function saveCurrentUser() { localStorage.setItem('currentUser', JSON.stringify(currentUser)); }
 
-/* ========  UI HELPERS  ======== */
+/* ----------  UI HELPERS  ---------- */
 function showNotification(msg, type = 'info') {
   const box = document.getElementById('notification'), txt = document.getElementById('notification-text');
   txt.textContent = msg; box.className = `notification ${type} show`;
@@ -261,7 +261,7 @@ function showPage(name) {
   trackEvent('page_view', {page: name});
 }
 
-/* ========  COURSES  ======== */
+/* ----------  COURSES  ---------- */
 function renderCourses() {
   const grid = document.getElementById('course-grid');
   grid.innerHTML = '';
@@ -298,7 +298,7 @@ function renderMarkdown(t) {
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
 }
 
-/* ========  AUTH  ======== */
+/* ----------  AUTH  ---------- */
 function toggleAuth() {
   if (currentUser) { trackEvent('user_signout', {userId: currentUser.id}); currentUser = null; saveCurrentUser(); updateAuthButton(); showNotification('Signed out', 'success'); }
   else showPage('auth');
@@ -333,7 +333,7 @@ function updateAuthButton() {
   else { btn.textContent = 'Sign In'; info.classList.add('hidden'); }
 }
 
-/* ========  COMMUNITY  ======== */
+/* ----------  COMMUNITY  ---------- */
 function populateCourseSelect() {
   const s = document.getElementById('upload-course');
   if (!s || !appData.courses.length) { s.innerHTML = '<option value="">No courses</option>'; return; }
@@ -372,7 +372,7 @@ function viewNotePage(id) {
   showPage('note-view-page');
 }
 
-/* ========  DEV-MODE GATE  ======== */
+/* ----------  DEV-MODE GATE  ---------- */
 function toggleDevMode() {
   if (document.getElementById('dev-password').value !== '6767') { showNotification('Wrong password', 'error'); return; }
   isDeveloperMode = !isDeveloperMode;
@@ -395,7 +395,7 @@ function updateDevDashboard() {
     : '<p>No registered users</p>';
 }
 
-/* ========  AI CHAT  ======== */
+/* ----------  AI CHAT  ---------- */
 function renderAIChat(courseId) {
   const box = document.getElementById('ai-chat-container');
   if (!currentUser) { box.innerHTML = '<div class="chat-restricted"><i class="fas fa-lock"></i><h4>AI Chat Restricted</h4><p>Please <a href="#" onclick="showPage(\'auth\'); return false;">sign in</a> to access the AI study assistant.</p></div>'; return; }
@@ -426,7 +426,7 @@ function generateAIResponse(msg) {
   return replies[Math.floor(Math.random() * replies.length)];
 }
 
-/* ========  ANALYTICS  ======== */
+/* ----------  ANALYTICS  ---------- */
 function initAnalytics() {
   trackEvent('page_view', {page: 'home'});
   let start = Date.now();
@@ -439,7 +439,7 @@ function trackEvent(ev, p = {}) {
   saveData();
 }
 
-/* ========  MISC  ======== */
+/* ----------  MISC  ---------- */
 function deleteCourse(e, id) { e.stopPropagation(); showNotification('Course deleted', 'success'); appData.courses = appData.courses.filter(c => c.id !== id); saveData(); renderCourses(); populateCourseSelect(); }
 function deleteLink(cid, url) { const c = appData.courses.find(x => x.id === cid); if (c) { c.links = c.links.filter(l => l.url !== url); saveData(); showCourseDetail(cid); } }
 function addLink() { const t = prompt('Link title'), u = prompt('URL'); if (t && u) { const c = appData.courses.find(x => x.id === currentCourseId); if (c) { c.links.push({title: t, url: u}); saveData(); showCourseDetail(currentCourseId); } } }
