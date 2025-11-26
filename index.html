@@ -8,9 +8,8 @@
     <style>
         :root {
             --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6; --accent: #06b6d4;
-            --success: #10b981; --error: #ef4444; --dark: #1e293b; --light: #f8fafc;
-            --gray: #64748b; --border: #e2e8f0; --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.25);
+            --success: #10b981; --error: #ef4444; --dark: #1e293b; --light: #f8fafc; --gray: #64748b;
+            --border: #e2e8f0; --shadow: 0 4px 6px -1px rgba(0,0,0,.1); --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.25);
         }
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
         body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:var(--dark);line-height:1.6;}
@@ -107,7 +106,7 @@
         </div>
     </div>
 
-    <!--------- COURSE DETAIL --------->
+    <!--------- COURSE DETAIL (NOTES / LINKS / AI) --------->
     <div id="course-detail" class="page-section">
         <div class="course-detail">
             <div class="page-header">
@@ -441,7 +440,7 @@ function trackEvent(ev, p = {}) {
 }
 
 /* ========  MISC  ======== */
-function deleteCourse(e, id) { e.stopPropagation(); if (confirm('Delete course?')) { appData.courses = appData.courses.filter(c => c.id !== id); saveData(); renderCourses(); populateCourseSelect(); showNotification('Deleted', 'success'); } }
+function deleteCourse(e, id) { e.stopPropagation(); showNotification('Course deleted', 'success'); appData.courses = appData.courses.filter(c => c.id !== id); saveData(); renderCourses(); populateCourseSelect(); }
 function deleteLink(cid, url) { const c = appData.courses.find(x => x.id === cid); if (c) { c.links = c.links.filter(l => l.url !== url); saveData(); showCourseDetail(cid); } }
 function addLink() { const t = prompt('Link title'), u = prompt('URL'); if (t && u) { const c = appData.courses.find(x => x.id === currentCourseId); if (c) { c.links.push({title: t, url: u}); saveData(); showCourseDetail(currentCourseId); } } }
 function toggleEditNotes() { const content = document.getElementById('course-notes'), editor = document.getElementById('notes-editor'), btn = document.querySelector('button[onclick="toggleEditNotes()"] span'), saveBtn = document.querySelector('button[onclick="saveNotes()"]').parentElement; if (editor.style.display === 'none') { content.style.display = 'none'; editor.style.display = 'block'; btn.textContent = 'Cancel Edit'; saveBtn.classList.remove('hidden'); } else { content.style.display = 'block'; editor.style.display = 'none'; btn.textContent = 'Edit Notes'; saveBtn.classList.add('hidden'); } }
